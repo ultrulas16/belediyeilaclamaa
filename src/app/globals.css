@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-safety-charcoal: #121212;
+  --color-safety-yellow: #fde047;
+  --color-safety-slate: #f4f4f5;
+  --color-safety-white: #ffffff;
+  
+  --radius-safety: 0px;
+  
+  --animate-safety-slide: safetySlide 0.8s cubic-bezier(0.2, 1, 0.2, 1) forwards;
+  
+  @keyframes safetySlide {
+    from {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #121212;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+@layer components {
+  .container-custom {
+    @apply max-w-7xl mx-auto px-6 sm:px-12 lg:px-20;
+  }
+  
+  .safety-card {
+    @apply bg-white border-[3px] border-safety-charcoal shadow-[12px_12px_0px_rgba(18,18,18,1)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[16px_16px_0px_rgba(253,224,71,1)] transition-all duration-300 overflow-hidden;
+  }
+  
+  .btn-safety-primary {
+    @apply bg-safety-charcoal hover:bg-black text-safety-yellow px-10 py-5 rounded-none font-black transition-all flex items-center justify-center gap-2 uppercase tracking-[0.1em] border-2 border-safety-charcoal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+  }
+  
+  .btn-safety-yellow {
+    @apply bg-safety-yellow hover:bg-yellow-400 text-safety-charcoal px-10 py-5 rounded-none font-black transition-all flex items-center justify-center gap-2 uppercase tracking-[0.1em] border-2 border-safety-charcoal shadow-[4px_4px_0px_rgba(18,18,18,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px];
+  }
+
+  .safety-badge {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-safety-yellow text-safety-charcoal text-[13px] font-black uppercase tracking-widest border-2 border-safety-charcoal;
+  }
+  
+  .section-title {
+    @apply text-5xl lg:text-8xl font-black text-safety-charcoal uppercase leading-[0.85] tracking-tighter;
+  }
+}
