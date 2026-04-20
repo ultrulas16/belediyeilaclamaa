@@ -77,7 +77,10 @@ export default function LiveChat() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `session_id=eq.${sessionId}` },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as ChatMessage]);
+          setMessages(prev => {
+            if (prev.some(m => m.id === (payload.new as ChatMessage).id)) return prev;
+            return [...prev, payload.new as ChatMessage];
+          });
         }
       )
       .subscribe();

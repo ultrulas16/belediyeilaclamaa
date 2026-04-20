@@ -18,7 +18,7 @@ export async function notifyAdmin(message: string) {
       },
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
-        text: message,
+        text: `🌐 <b>buyuksehirilaclama.com.tr</b>\n\n${message}`,
         parse_mode: "HTML",
       }),
     });

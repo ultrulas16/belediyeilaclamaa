@@ -79,7 +79,10 @@ export default function AdminChatPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `session_id=eq.${selectedSession}` },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as ChatMessage]);
+          setMessages(prev => {
+            if (prev.some(m => m.id === (payload.new as ChatMessage).id)) return prev;
+            return [...prev, payload.new as ChatMessage];
+          });
         }
       )
       .subscribe();
