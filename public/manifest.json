@@ -1,0 +1,17 @@
+{
+  "name": "Belediye İlaçlama",
+  "short_name": "İlaçlama",
+  "description": "Profesyonel Haşere Kontrolü ve Halk Sağlığı Merkezi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#FDE047",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "orientation": "portrait"
+}

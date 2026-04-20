@@ -146,7 +146,9 @@ export default function AdminChatPage() {
                      )}
                   >
                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">#ID_{session.session_id.substring(0, 4)}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">
+                           {session.user ? session.user.full_name : `#ID_${session.session_id.substring(0, 4)}`}
+                        </span>
                         <span className="text-[9px] font-black opacity-30">{new Date(session.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
                      </div>
                      <div className="font-black text-sm uppercase italic truncate">{session.last_message}</div>
@@ -166,13 +168,23 @@ export default function AdminChatPage() {
                      <div className="h-12 w-12 bg-safety-charcoal text-safety-yellow flex items-center justify-center">
                         <MessageCircle size={24} />
                      </div>
-                     <div className="space-y-1">
-                        <div className="font-black italic uppercase tracking-tighter text-safety-charcoal">SOHBET: #ID_{selectedSession.substring(0, 8)}</div>
-                        <div className="flex items-center gap-2 text-[9px] font-black uppercase text-emerald-500">
-                           <Activity size={10} />
-                           VATANDAŞ BAĞLI
-                        </div>
-                     </div>
+                      <div className="space-y-1">
+                         <div className="font-black italic uppercase tracking-tighter text-safety-charcoal text-xl leading-none">
+                            {sessions.find(s => s.session_id === selectedSession)?.user?.full_name || "BİLİNMEYEN KULLANICI"}
+                         </div>
+                         <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-500">
+                               <Activity size={10} />
+                               VATANDAŞ BAĞLI
+                            </div>
+                            {sessions.find(s => s.session_id === selectedSession)?.user?.phone && (
+                               <a href={`tel:${sessions.find(s => s.session_id === selectedSession)?.user?.phone}`} className="flex items-center gap-1.5 text-xs font-black text-safety-charcoal/40 hover:text-safety-charcoal transition-colors">
+                                  <Clock size={12} />
+                                  Geri Dönüş: {sessions.find(s => s.session_id === selectedSession)?.user?.phone}
+                               </a>
+                            )}
+                         </div>
+                      </div>
                   </div>
                </div>
 

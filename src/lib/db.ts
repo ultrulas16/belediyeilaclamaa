@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { notifyAdmin } from '@/lib/notifications';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -26,6 +27,23 @@ export interface ChatMessage {
   content: string;
   created_at: string;
   is_read: boolean;
+}
+
+export interface AnalyticEvent {
+  id: string;
+  ip: string;
+  path: string;
+  referrer: string;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface ChatSession {
+  id: string;
+  session_id: string;
+  full_name: string;
+  phone: string;
+  created_at: string;
 }
 
 export async function getLeads(): Promise<Lead[]> {
@@ -79,6 +97,9 @@ export async function addLead(lead: Omit<Lead, 'id' | 'date' | 'status' | 'locat
       console.error('Error adding lead:', error);
       return null;
     }
+
+    // Notify Admin
+    await notifyAdmin(`<b>🚨 YENİ BAŞVURU!</b>\n\n📌 İsim: ${lead.name}\n📞 Tel: ${lead.phone}\n🛠 Hizmet: ${lead.service}\n💬 Mesaj: ${lead.message}`);
 
     return data;
   } catch (error) {
@@ -170,6 +191,11 @@ export async function sendChatMessage(message: Omit<ChatMessage, 'id' | 'created
       return null;
     }
 
+    // Notify Admin if it's from user
+    if (message.sender === 'user' && !message.content.includes('[SİSTEM]')) {
+      await notifyAdmin(`<b>💬 YENİ MESAJ!</b>\n\n🆔 Oturum: #${message.session_id.substring(0, 4)}\n✉️ Mesaj: ${message.content}`);
+    }
+
     return data;
   } catch (error) {
     console.error('Error in sendChatMessage:', error);
@@ -177,25 +203,64 @@ export async function sendChatMessage(message: Omit<ChatMessage, 'id' | 'created
   }
 }
 
-export async function getAllChatSessions(): Promise<{ session_id: string, last_message: string, created_at: string }[]> {
+export async function upsertChatSession(session: Omit<ChatSession, 'id' | 'created_at'>): Promise<boolean> {
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase
+      .from('chat_sessions')
+      .upsert([
+        {
+          ...session,
+          created_at: new Date().toISOString()
+        }
+      ], { onConflict: 'session_id' });
+
+    if (error) {
+      console.error('Error upserting chat session:', error);
+      return false;
+    }
+
+    // Notify Admin of new connection
+    await notifyAdmin(`<b>⚡ YENİ CANLI DESTEK BAĞLANTISI!</b>\n\n👤 İsim: ${session.full_name}\n📞 Tel: ${session.phone}\n🆔 ID: #${session.session_id.substring(0, 4)}`);
+
+    return true;
+  } catch (error) {
+    console.error('Error in upsertChatSession:', error);
+    return false;
+  }
+}
+
+export async function getAllChatSessions(): Promise<{ session_id: string, last_message: string, created_at: string, user?: ChatSession }[]> {
     if (!supabase) return [];
     
-    // This is a simplified fetch - normally we'd grouping by session_id
     try {
-        const { data, error } = await supabase
+        // Fetch sessions first
+        const { data: messages, error: mError } = await supabase
             .from('messages')
             .select('session_id, content, created_at')
             .order('created_at', { ascending: false });
             
-        if (error) return [];
+        if (mError) return [];
+
+        // Fetch user metadata
+        const { data: userData, error: uError } = await supabase
+            .from('chat_sessions')
+            .select('*');
+            
+        const userMap = new Map();
+        if (!uError && userData) {
+            userData.forEach(u => userMap.set(u.session_id, u));
+        }
         
         const sessionsMap = new Map();
-        data.forEach((msg: any) => {
+        messages.forEach((msg: any) => {
             if (!sessionsMap.has(msg.session_id)) {
                 sessionsMap.set(msg.session_id, {
                     session_id: msg.session_id,
                     last_message: msg.content,
-                    created_at: msg.created_at
+                    created_at: msg.created_at,
+                    user: userMap.get(msg.session_id)
                 });
             }
         });
@@ -204,4 +269,77 @@ export async function getAllChatSessions(): Promise<{ session_id: string, last_m
     } catch (error) {
         return [];
     }
+}
+
+export async function logVisit(event: Omit<AnalyticEvent, 'id' | 'created_at'>): Promise<boolean> {
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase
+      .from('analytics')
+      .insert([
+        {
+          ...event,
+          created_at: new Date().toISOString()
+        }
+      ]);
+
+    if (error) {
+      console.error('Error logging visit:', error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error in logVisit:', error);
+    return false;
+  }
+}
+
+export async function getAnalyticsSummary() {
+  if (!supabase) return { total: 0, uniqueIps: 0, googleTraffic: 0, recent: [], topPages: [], deviceStats: { mobile: 0, desktop: 0, tablet: 0 } };
+
+  try {
+    const { data: allData, error } = await supabase
+      .from('analytics')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const total = allData?.length || 0;
+    const uniqueIps = new Set(allData?.map(d => d.ip)).size;
+    const googleTraffic = allData?.filter(d => d.referrer?.includes('google.com')).length || 0;
+    const recent = allData?.slice(0, 20) || [];
+
+    // Top Pages Aggregation
+    const pageMap = new Map();
+    allData?.forEach(d => {
+      pageMap.set(d.path, (pageMap.get(d.path) || 0) + 1);
+    });
+    const topPages = Array.from(pageMap.entries())
+      .map(([path, count]) => ({ path, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Device Stats
+    let mobile = 0, tablet = 0, desktop = 0;
+    allData?.forEach(d => {
+      const ua = d.user_agent?.toLowerCase() || '';
+      if (ua.includes('tablet') || ua.includes('ipad')) tablet++;
+      else if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) mobile++;
+      else desktop++;
+    });
+
+    return { 
+      total, 
+      uniqueIps, 
+      googleTraffic, 
+      recent, 
+      topPages, 
+      deviceStats: { mobile, desktop, tablet } 
+    };
+  } catch (error) {
+    console.error('Error fetching analytics summary:', error);
+    return { total: 0, uniqueIps: 0, googleTraffic: 0, recent: [], topPages: [], deviceStats: { mobile: 0, desktop: 0, tablet: 0 } };
+  }
 }

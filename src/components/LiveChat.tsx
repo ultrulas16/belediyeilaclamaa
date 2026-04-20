@@ -11,7 +11,7 @@ import {
   History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getChatMessages, sendChatMessage, ChatMessage, supabase } from "@/lib/db";
+import { getChatMessages, sendChatMessage, ChatMessage, upsertChatSession, supabase } from "@/lib/db";
 
 export default function LiveChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +21,7 @@ export default function LiveChat() {
   const [loading, setLoading] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
   const [checkboxes, setCheckboxes] = useState({ kvkk: false, privacy: false });
+  const [userData, setUserData] = useState({ name: "", phone: "" });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Initialize Session & Consent
@@ -36,9 +37,28 @@ export default function LiveChat() {
     setIsAccepted(accepted);
   }, []);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    if (!sessionId) return;
+    
+    setLoading(true);
+
+    // Save contact info formally
+    await upsertChatSession({
+      session_id: sessionId,
+      full_name: userData.name,
+      phone: userData.phone
+    });
+
+    // Send a system message with contact details for backward compatibility/quick view
+    await sendChatMessage({
+      session_id: sessionId,
+      sender: 'user',
+      content: `[SİSTEM] Yeni Bağlantı: ${userData.name} - Tel: ${userData.phone}`
+    });
+
     localStorage.setItem("chat_terms_accepted", "true");
     setIsAccepted(true);
+    setLoading(false);
   };
 
   // Fetch History & Subscribe
@@ -123,27 +143,47 @@ export default function LiveChat() {
 
            {/* Chat Content or Consent */}
            {!isAccepted ? (
-             <div className="flex-1 p-10 flex flex-col justify-center space-y-10 bg-safety-slate">
+             <div className="flex-1 p-8 flex flex-col justify-center space-y-6 bg-safety-slate overflow-y-auto">
                 <div className="space-y-4">
-                   <Zap size={48} className="text-safety-yellow fill-safety-yellow" />
-                   <h3 className="text-3xl font-black italic uppercase tracking-tighter leading-none text-safety-charcoal">
-                      GÜVENLİ <br/> BAĞLANTI <br/> ÖNCESİ ONAY
+                   <Zap size={32} className="text-safety-yellow fill-safety-yellow" />
+                   <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-none text-safety-charcoal">
+                      CANLI DESTEK <br/> BAŞVURUSU
                    </h3>
-                   <p className="text-[11px] font-bold uppercase text-safety-charcoal/50 leading-relaxed">
-                      Sohbete başlamadan önce yasal mevzuat gereği aşağıdaki maddeleri onaylamanız gerekmektedir.
-                   </p>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-safety-charcoal/40">AD SOYAD</label>
+                    <input 
+                      type="text"
+                      placeholder="ADINIZI GİRİNİZ..."
+                      value={userData.name}
+                      onChange={(e) => setUserData({...userData, name: e.target.value})}
+                      className="w-full bg-white border-2 border-safety-charcoal px-4 py-3 outline-none font-black text-xs uppercase italic focus:bg-safety-yellow/10"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-safety-charcoal/40">TELEFON NUMARASI</label>
+                    <input 
+                      type="tel"
+                      placeholder="05XX XXX XX XX"
+                      value={userData.phone}
+                      onChange={(e) => setUserData({...userData, phone: e.target.value})}
+                      className="w-full bg-white border-2 border-safety-charcoal px-4 py-3 outline-none font-black text-xs uppercase italic focus:bg-safety-yellow/10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
                    <label className="flex items-start gap-4 cursor-pointer group">
                       <input 
                          type="checkbox" 
                          checked={checkboxes.kvkk}
                          onChange={(e) => setCheckboxes({...checkboxes, kvkk: e.target.checked})}
-                         className="mt-1 h-5 w-5 border-2 border-safety-charcoal rounded-none accent-safety-charcoal"
+                         className="mt-1 h-4 w-4 border-2 border-safety-charcoal rounded-none accent-safety-charcoal flex-shrink-0"
                       />
-                      <span className="text-[10px] font-black uppercase italic tracking-tight text-safety-charcoal group-hover:text-black transition-colors">
-                         KVKK Aydınlatma Metni'ni okudum ve verilerimin işlenmesini kabul ediyorum.
+                      <span className="text-[9px] font-black uppercase italic tracking-tight text-safety-charcoal group-hover:text-black transition-colors">
+                         KVKK Aydınlatma Metni'ni onaylıyorum.
                       </span>
                    </label>
                    <label className="flex items-start gap-4 cursor-pointer group">
@@ -151,20 +191,20 @@ export default function LiveChat() {
                          type="checkbox" 
                          checked={checkboxes.privacy}
                          onChange={(e) => setCheckboxes({...checkboxes, privacy: e.target.checked})}
-                         className="mt-1 h-5 w-5 border-2 border-safety-charcoal rounded-none accent-safety-charcoal"
+                         className="mt-1 h-4 w-4 border-2 border-safety-charcoal rounded-none accent-safety-charcoal flex-shrink-0"
                       />
-                      <span className="text-[10px] font-black uppercase italic tracking-tight text-safety-charcoal group-hover:text-black transition-colors">
-                         Gizlilik Sözleşmesi ve Kullanım Koşulları'nı onaylıyorum.
+                      <span className="text-[9px] font-black uppercase italic tracking-tight text-safety-charcoal group-hover:text-black transition-colors">
+                         Gizlilik Sözleşmesi'ni kabul ediyorum.
                       </span>
                    </label>
                 </div>
 
                 <button 
-                   disabled={!checkboxes.kvkk || !checkboxes.privacy}
+                   disabled={!checkboxes.kvkk || !checkboxes.privacy || !userData.name.trim() || !userData.phone.trim() || loading}
                    onClick={handleAccept}
                    className="btn-safety-primary w-full disabled:opacity-30 disabled:grayscale italic"
                 >
-                   SOHBETE BAŞLA
+                   {loading ? "BAĞLANTI KURULUYOR..." : "SOHBETE BAŞLA"}
                 </button>
              </div>
            ) : (

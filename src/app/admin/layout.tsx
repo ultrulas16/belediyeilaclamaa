@@ -13,7 +13,8 @@ import {
   Zap,
   Activity,
   Bell,
-  MessageCircle
+  MessageCircle,
+  BarChart3
 } from "lucide-react";
 import { logoutAction } from "../login/actions";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "PANEL ÖZETİ", href: "/admin", icon: LayoutDashboard },
     { name: "BAŞVURU YÖNETİMİ", href: "/admin/leads", icon: Users },
     { name: "CANLI DESTEK", href: "/admin/chat", icon: MessageCircle },
+    { name: "TRAFİK ANALİZİ", href: "/admin/analytics", icon: BarChart3 },
   ];
 
   return (
