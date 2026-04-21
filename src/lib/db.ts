@@ -98,8 +98,12 @@ export async function addLead(lead: Omit<Lead, 'id' | 'date' | 'status' | 'locat
       return null;
     }
 
-    // Notify Admin
-    await notifyAdmin(`<b>🚨 YENİ BAŞVURU!</b>\n\n📌 İsim: ${lead.name}\n📞 Tel: ${lead.phone}\n🛠 Hizmet: ${lead.service}\n💬 Mesaj: ${lead.message}`);
+    // Notify Admin (Non-blocking)
+    try {
+      notifyAdmin(`<b>🚨 YENİ BAŞVURU!</b>\n\n📌 İsim: ${lead.name}\n📞 Tel: ${lead.phone}\n🛠 Hizmet: ${lead.service}\n💬 Mesaj: ${lead.message}`);
+    } catch (e) {
+      console.error('Notification error:', e);
+    }
 
     return data;
   } catch (error) {
@@ -191,9 +195,13 @@ export async function sendChatMessage(message: Omit<ChatMessage, 'id' | 'created
       return null;
     }
 
-    // Notify Admin if it's from user
+    // Notify Admin if it's from user (Non-blocking)
     if (message.sender === 'user' && !message.content.includes('[SİSTEM]')) {
-      await notifyAdmin(`<b>💬 YENİ MESAJ!</b>\n\n🆔 Oturum: #${message.session_id.substring(0, 4)}\n✉️ Mesaj: ${message.content}`);
+      try {
+        notifyAdmin(`<b>💬 YENİ MESAJ!</b>\n\n🆔 Oturum: #${message.session_id.substring(0, 4)}\n✉️ Mesaj: ${message.content}`);
+      } catch (e) {
+        console.error('Notification error:', e);
+      }
     }
 
     return data;
@@ -221,8 +229,12 @@ export async function upsertChatSession(session: Omit<ChatSession, 'id' | 'creat
       return false;
     }
 
-    // Notify Admin of new connection
-    await notifyAdmin(`<b>⚡ YENİ CANLI DESTEK BAĞLANTISI!</b>\n\n👤 İsim: ${session.full_name}\n📞 Tel: ${session.phone}\n🆔 ID: #${session.session_id.substring(0, 4)}`);
+    // Notify Admin of new connection (Non-blocking)
+    try {
+      notifyAdmin(`<b>⚡ YENİ CANLI DESTEK BAĞLANTISI!</b>\n\n👤 İsim: ${session.full_name}\n📞 Tel: ${session.phone}\n🆔 ID: #${session.session_id.substring(0, 4)}`);
+    } catch (e) {
+      console.error('Notification error:', e);
+    }
 
     return true;
   } catch (error) {
