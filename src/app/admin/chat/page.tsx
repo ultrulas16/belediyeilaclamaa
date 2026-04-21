@@ -19,12 +19,13 @@ import {
   sendChatMessage, 
   getAllChatSessions, 
   ChatMessage, 
+  ChatSession,
   supabase 
 } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export default function AdminChatPage() {
-  const [sessions, setSessions] = useState<{ session_id: string, last_message: string, created_at: string }[]>([]);
+  const [sessions, setSessions] = useState<{ session_id: string, last_message: string, created_at: string, user?: ChatSession }[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
